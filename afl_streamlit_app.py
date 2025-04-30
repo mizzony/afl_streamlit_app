@@ -102,7 +102,7 @@ st.header("📊 Player Stats Explorer (2000–2024)")
 
 @st.cache_data
 def load_player_data():
-    df = pd.read_csv("/Users/sutinanthanombun/Desktop/Streamlit/player_stats.csv")
+    df = pd.read_csv("https://drive.google.com/uc?export=download&id=14kyzN0g_3RxFAvK3X1mwqsJ9DeZPYCzu")
     df.columns = df.columns.str.strip()
     return df
 
