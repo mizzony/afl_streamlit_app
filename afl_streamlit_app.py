@@ -9,36 +9,63 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score
 
 # ------------------ PAGE SETUP ------------------
-st.set_page_config(page_title="AFL Fanclubs", layout="wide")
+st.set_page_config(
+    page_title="AFL Fanclubs",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ------------------ DARK THEME STYLING ------------------
 st.markdown("""
     <style>
-    html, body, [class*="css"]  {
-        font-family: 'Segoe UI', sans-serif;
+    html, body, .main, .stApp {
+        background-color: #121212 !important;
+        color: #e0e0e0 !important;
     }
-    .main {
-        background-color: #f5f9ff;
+    h1, h2, h3, h4, h5, h6 {
+        color: #ff9100 !important;
+    }
+    label, .stSelectbox label, .stSlider label, .stNumberInput label {
+        color: #cccccc !important;
+        font-weight: 600;
     }
     .stTabs [data-baseweb="tab"] {
         font-size: 16px;
-        color: #444;
-        background-color: #e1ecf4;
+        color: #fff;
+        background-color: #2c2c2c;
         padding: 10px;
         margin: 2px;
         border-radius: 6px 6px 0 0;
     }
     .stTabs [data-baseweb="tab"]:hover {
-        background-color: #d4e5f4;
+        background-color: #424242;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #1976d2;
+        background-color: #ff9100;
+        color: black;
+        font-weight: bold;
+    }
+    .stButton>button {
+        background-color: #ff6d00;
         color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+    }
+    .stButton>button:hover {
+        background-color: #ff9100;
+    }
+    .stMetric {
+        background-color: #212121;
+        padding: 10px;
+        border-radius: 10px;
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🏉 AFL Fanclubs: Match Predictor & Player Stats Explorer")
 
-# ------------------ MATCH PREDICTOR ------------------
+# ------------------ MATCH PREDICTOR SECTION ------------------
 st.header("🔮 AFL Match Winner Predictor")
 st.markdown("<small><i>This is the testing version, model hasn't been refined yet.</i></small>", unsafe_allow_html=True)
 
@@ -73,14 +100,14 @@ for col in X_train.select_dtypes(include=['object']).columns:
 model = xgb.XGBClassifier(objective='binary:logistic', eval_metric='logloss', seed=42, n_estimators=100, max_depth=4, learning_rate=0.1)
 model.fit(X_train, y_train)
 
-st.sidebar.header("⚙️ Match Details")
-home_team = st.sidebar.selectbox("Home Team", sorted(data['HomeTeam'].unique()))
-away_team = st.sidebar.selectbox("Away Team", sorted(data['AwayTeam'].unique()))
-venue = st.sidebar.selectbox("Venue", sorted(data['Venue'].unique()))
-rainfall = st.sidebar.slider("Rainfall (mm)", 0.0, 50.0, 0.0)
-year = st.sidebar.number_input("Year", min_value=2020, max_value=2025, value=2024)
+st.subheader("⚙️ Match Details")
+home_team = st.selectbox("Home Team", sorted(data['HomeTeam'].unique()))
+away_team = st.selectbox("Away Team", sorted(data['AwayTeam'].unique()))
+venue = st.selectbox("Venue", sorted(data['Venue'].unique()))
+rainfall = st.slider("Rainfall (mm)", 0.0, 50.0, 0.0)
+year = st.number_input("Year", min_value=2020, max_value=2025, value=2024)
 
-if st.sidebar.button("Predict Match Outcome"):
+if st.button("Predict Match Outcome"):
     if home_team not in home_team_avg_points.index or away_team not in away_team_avg_points.index:
         st.warning("Invalid team selection.")
     else:
@@ -97,12 +124,66 @@ if st.sidebar.button("Predict Match Outcome"):
         result = "🏡 Home Team Wins!" if pred[0] == 1 else "🚶‍♂️ Away Team Wins!"
         st.success(f"### ✅ Prediction: {result}", icon="🎯")
         st.balloons()
+
+# ------------------ BETTING ODDS SECTION ------------------
+st.header("💰 Want to make a bet now")
+
+def calculate_odds(df):
+    recent = df[df['Date'] >= df['Date'].max() - pd.Timedelta(days=30)]
+    matches = recent.groupby(['HomeTeam', 'AwayTeam', 'Date']).size().reset_index().drop(columns=0).sort_values('Date').head(5)
+    odds_displayed = []
+    for _, row in matches.iterrows():
+        home = row['HomeTeam']
+        away = row['AwayTeam']
+        date = row['Date'].strftime("%a %I:%M %p")
+
+        recent_games = df[((df['HomeTeam'] == home) & (df['AwayTeam'] == away)) | 
+                          ((df['HomeTeam'] == away) & (df['AwayTeam'] == home))]
+
+        # Use win count instead of margin
+        home_wins = ((recent_games['HomeTeam'] == home) & (recent_games['HomeTeamScore'] > recent_games['AwayTeamScore'])).sum()
+        home_wins += ((recent_games['AwayTeam'] == home) & (recent_games['AwayTeamScore'] > recent_games['HomeTeamScore'])).sum()
+
+        away_wins = ((recent_games['HomeTeam'] == away) & (recent_games['HomeTeamScore'] > recent_games['AwayTeamScore'])).sum()
+        away_wins += ((recent_games['AwayTeam'] == away) & (recent_games['AwayTeamScore'] > recent_games['HomeTeamScore'])).sum()
+
+        total = home_wins + away_wins
+
+        if total == 0:
+            home_prob = away_prob = 0.5
+        else:
+            home_prob = home_wins / total
+            away_prob = away_wins / total
+
+        home_odds = round(1 / home_prob, 2) if home_prob > 0 else float('inf')
+        away_odds = round(1 / away_prob, 2) if away_prob > 0 else float('inf')
+
+        odds_displayed.append({
+            "Match": f"{home} vs {away}",
+            "Start Time": date,
+            "Home Odds": home_odds,
+            "Away Odds": away_odds
+        })
+    return odds_displayed
+
+data, home_team_avg_points, away_team_avg_points = load_match_data()
+odds_list = calculate_odds(data)
+
+# Show upcoming odds section
+for i, match in enumerate(odds_list):
+    st.markdown(f"**{match['Match']}** – _{match['Start Time']}_")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.button(f"Bet {match['Match'].split(' vs ')[0]} @ {match['Home Odds']}", key=f"home_{i}")
+    with col2:
+        st.button(f"Bet {match['Match'].split(' vs ')[1]} @ {match['Away Odds']}", key=f"away_{i}")
+
 # ------------------ PLAYER STATS SECTION ------------------
 st.header("📊 Player Stats Explorer (2000–2024)")
 
 @st.cache_data
 def load_player_data():
-    df = pd.read_csv("https://drive.google.com/uc?export=download&id=14kyzN0g_3RxFAvK3X1mwqsJ9DeZPYCzu")
+    df = pd.read_csv("https://raw.githubusercontent.com/mizzony/afl_streamlit_app/refs/heads/main/player_stats_last5.csv")
     df.columns = df.columns.str.strip()
     return df
 
@@ -112,6 +193,7 @@ df_season = df[df['Season'] == selected_season]
 teams = sorted(df_season['Team'].dropna().unique())
 selected_team = st.multiselect('Select Team(s)', teams, teams)
 df_selected = df_season[df_season['Team'].isin(selected_team)]
+
 
 # Tabs for player insights
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
