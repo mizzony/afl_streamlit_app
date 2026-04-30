@@ -70,7 +70,7 @@ model.fit(X_train, y_train)
 y_pred = model.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 
-st.sidebar.metric("Model Accuracy", f"{acc*100:.2f}%")
+#st.sidebar.metric("Model Accuracy", f"{acc*100:.2f}%")
 
 # ------------------ UI ------------------
 st.header("🔮 Predict Match Outcome")
