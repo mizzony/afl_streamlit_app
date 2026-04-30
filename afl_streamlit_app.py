@@ -96,7 +96,8 @@ team_logos = {
 # ------------------ DATA LOAD ------------------
 @st.cache_data
 def load_match_data():
-    df = pd.read_csv('https://raw.githubusercontent.com/mizzony/AFL/refs/heads/main/afl_data.csv')
+    #df = pd.read_csv('https://raw.githubusercontent.com/mizzony/AFL/refs/heads/main/afl_data.csv')
+    df = pd.read_csv('https://raw.githubusercontent.com/mizzony/AFL/main/afl_data.csv')
     df['Date'] = pd.to_datetime(df['Date'])
     df['Attendance'] = df['Attendance'].str.replace(',', '').astype(float)
     df['Rainfall'] = df['Rainfall'].fillna(df['Rainfall'].median())
@@ -115,7 +116,7 @@ def load_player_data():
     return pdf
 
 data, home_team_avg_points, away_team_avg_points = load_match_data()
-player_df = load_player_data()
+#player_df = load_player_data()
 
 # ------------------ CLEANING ------------------
 def clean_label(value, known_list):
