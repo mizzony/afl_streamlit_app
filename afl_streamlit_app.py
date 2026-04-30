@@ -211,7 +211,7 @@ with tab_predictor:
     a = st.selectbox("Away", sorted(data['AwayTeam'].unique()), index=1)
     v = st.selectbox("Venue", sorted(data['Venue'].unique()))
     r = st.slider("Rain (mm)",0.0,50.0,0.0)
-    y = st.number_input("Year",2020,2025,2024)
+    y = st.number_input("Year",2020,2026,2024)
     if st.button("Predict"):
         dfp = pd.DataFrame({
             'HomeTeam':[label_encoders['HomeTeam'].transform([h])[0]],
